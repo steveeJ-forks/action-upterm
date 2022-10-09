@@ -74,7 +74,7 @@ export async function run() {
     } else {
       core.info("Auto-generating ~/.ssh/known_hosts by attempting connection to uptermd.upterm.dev")
       try {
-        await execShellCommand("ssh -i ~/.ssh/id_ed25519 uptermd.upterm.dev")
+        await execShellCommand("ssh -t -i ~/.ssh/id_ed25519 uptermd.upterm.dev")
       } catch { }
       // @cert-authority entry is the mandatory entry. generate the entry based on the known_hosts entry key
       try {
