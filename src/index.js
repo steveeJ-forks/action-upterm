@@ -54,7 +54,7 @@ export async function run() {
         if (!fs.existsSync(path.join(sshPath, t.id_file))) {
           core.debug("Generating ${t.algo} SSH key at ${t.id_file}", t.algo);
           try {
-            await execShellCommand(`ssh-keygen -q -t ${t.algo }-N "" -f ~/.ssh/${t.id_file}`);
+            await execShellCommand(`ssh-keygen -q -t ${t.algo} -N "" -f ~/.ssh/${t.id_file}`);
           } catch { }    
           core.debug("Generated SSH key for ${t.algo} successfully")
         } else {
