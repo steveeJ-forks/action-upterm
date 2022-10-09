@@ -1,64 +1,192 @@
-import os from "os"
+import { homedir } from "os"
 import fs from "fs"
 import path from "path"
 import * as core from "@actions/core"
 import * as github from "@actions/github"
 import { Octokit } from "@octokit/rest"
 const { createActionAuth } = require("@octokit/auth-action");
+const util = require('util');
+const process = require('process');
+const SSHConfig = require('ssh-config')
+const glob = require("glob");
 
 import { execShellCommand } from "./helpers"
 
-const UPTERM_VERSION = "v0.7.6"
+const UPTERM_VERSION = "v0.9.0"
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+function handle_signal(signal) {
+  core.warning(`received ${signal}, exiting.`);
+  process.exit(0);
+}
+
+
 export async function run() {
+  process.on('SIGINT', handle_signal);
+  process.on('SIGHUP', handle_signal);
+  process.on('SIGTERM', handle_signal);
+  process.on('SIGUSR1', handle_signal);
+
+  const homeDir = homedir();
+
   try {
     if (process.platform === "win32") {
-      core.info("Windows is not supported by upterm, skipping...")
+      core.error("Windows is not supported by upterm, skipping...")
       return
     }
 
+
     core.debug("Installing dependencies")
     if (process.platform == "linux") {
-      await execShellCommand(`curl -sL https://github.com/owenthereal/upterm/releases/download/${UPTERM_VERSION}/upterm_linux_amd64.tar.gz | tar zxvf - -C /tmp upterm && sudo install /tmp/upterm /usr/local/bin/`)
-      await execShellCommand("if ! command -v tmux &>/dev/null; then sudo apt-get -y install tmux; fi")
-    } else {
-      await execShellCommand("brew install owenthereal/upterm/upterm")
-      await execShellCommand("brew install tmux")
-    }
-    core.debug("Installed dependencies successfully")
-
-    const sshPath = path.join(os.homedir(), ".ssh")
-    if (!fs.existsSync(path.join(sshPath, "id_rsa"))) {
-      core.debug("Generating SSH keys")
-      fs.mkdirSync(sshPath, { recursive: true })
       try {
-        await execShellCommand(`ssh-keygen -q -t rsa -N "" -f ~/.ssh/id_rsa; ssh-keygen -q -t ed25519 -N "" -f ~/.ssh/id_ed25519`);
-      } catch { }    
-      core.debug("Generated SSH keys successfully")
+        await execShellCommand(`upterm version`);
+        core.debug("upterm is already installed.");
+      } catch {
+        core.debug("Installing upterm");
+        await execShellCommand(`curl -sL https://github.com/owenthereal/upterm/releases/download/${UPTERM_VERSION}/upterm_linux_amd64.tar.gz | tar zxvf - -C /tmp upterm && sudo install /tmp/upterm /usr/local/bin/`);
+      }
+      try {
+        await execShellCommand(`tmux -V`);
+        core.debug("tmux is already installed.");
+      } catch {
+        core.debug("Installing upterm");
+        await execShellCommand("sudo apt-get -y install tmux");
+      }
     } else {
-      core.debug("SSH key already exists")
+      process.env.HOMEBREW_NO_INSTALL_CLEANUP = "true";
+      await execShellCommand("brew install owenthereal/upterm/upterm");
+      await execShellCommand("brew install tmux");
+    }
+    core.debug("Installed dependencies successfully");
+
+    const home = process.env.HOME;
+
+    // clean up any pre-existing upterm sockets
+    const uptermSockGlob = path.join(homeDir, ".upterm/*.sock");
+    glob(uptermSockGlob, [], function (er, files) {
+      files.forEach((file => {
+        try {
+          globfs.rmSync(file)
+        } catch (error) {
+          core.warning(`error removing ${file}`)
+        }
+      }))
+    });
+
+    // make sure we have a BASH
+    if (process.env.SHELL == undefined || !process.env.SHELL.endsWith("bash")) {
+      const fallbackShell = "/bin/bash";
+      core.debug(`setting SHELL to ${fallbackShell}`);
+      process.env.SHELL = fallbackShell;
     }
 
-    core.debug("Configuring ssh client")
-    fs.appendFileSync(path.join(sshPath, "config"), "Host *\nStrictHostKeyChecking no\nCheckHostIP no\n" +
-      "TCPKeepAlive yes\nServerAliveInterval 30\nServerAliveCountMax 180\nVerifyHostKeyDNS yes\nUpdateHostKeys yes\n")
+    if (process.env.TMUX_TMPDIR == undefined) {
+      const tmuxTmpdirFallback = `${home}/.tmux_tmpdir`;
+      core.debug(`setting TMUX_TMPDIR=${tmuxTmpdirFallback}`);
+      process.env.TMUX_TMPDIR = tmuxTmpdirFallback;
+    };
+    fs.mkdirSync(process.env.TMUX_TMPDIR, { recursive: true });
+
+    const sshPath = path.join(homeDir, ".ssh")
+    if (!fs.existsSync(sshPath)) {
+      core.debug(`Creating ${sshPath}`);
+      fs.mkdirSync(sshPath, { recursive: true });
+    };
+
+    for (const t of [
+      { id_file: "id_rsa", algo: "rsa" },
+      { id_file: "id_ed25519", algo: "ed25519" }
+    ]) {
+      if (!fs.existsSync(path.join(sshPath, t.id_file))) {
+        core.debug(util.format(`Generating %s SSH key at %s`, t.algo, t.id_file));
+        try {
+          await execShellCommand(util.format(`ssh-keygen -q -t %s -N "" -f ${homedir}/.ssh/%s`, t.algo, t.id_file));
+        } catch { }
+        core.debug(util.format(`Generated SSH key for %s successfully`, t.algo));
+      } else {
+        core.debug(util.format(`SSH key for %s already exists`, t.algo));
+      }
+    }
+
+    const uptermServer = core.getInput("upterm-server");
+    const uptermServerHost = core.getInput("upterm-server").replace(/^[a-z]+:\/\/|:[0-9]+|/g, '');
+
+    core.debug(`configuring ssh client for host ${uptermServerHost}`);
+    const sshConfigPath = path.join(sshPath, "config");
+
+    var sshConfig;
+    try {
+      sshConfig = SSHConfig.parse(
+        fs
+          .readFileSync(sshConfigPath, 'utf8')
+          .replace(/\r\n/g, '\n')
+      );
+      sshConfig.remove({ Host: uptermServerHost });
+    } catch {
+      sshConfig = new SSHConfig();
+    }
+
+    const sshKnownHostsFile = path.join(sshPath, "known_hosts");
+
+    sshConfig.prepend({
+      Host: uptermServerHost,
+      IdentityFile: `${home}/.ssh/id_ed25519`,
+      UserKnownHostsFile: sshKnownHostsFile,
+      StrictHostKeyChecking: `no`,
+      CheckHostIP: `no`,
+      TCPKeepAlive: `yes`,
+      ServerAliveInterval: 30,
+      ServerAliveCountMax: 180,
+      VerifyHostKeyDNS: `yes`,
+      UpdateHostKeys: `yes`,
+      PasswordAuthentication: `no`,
+      RequestTTY: `no`
+    });
+    const sshConfigString = SSHConfig.stringify(sshConfig).toString();
+    core.debug(`new ssh config:\n${sshConfigString}`);
+    fs.writeFileSync(sshConfigPath, sshConfigString);
+
     // entry in known hosts file in mandatory in upterm. attempt ssh connection to upterm server
     // to get the host key added to ~/.ssh/known_hosts
     if (core.getInput("ssh-known-hosts") && core.getInput("ssh-known-hosts") !== "") {
-      core.info("Appending ssh-known-hosts to ~/.ssh/known_hosts. Contents of ~/.ssh/known_hosts:")
-      fs.appendFileSync(path.join(sshPath, "known_hosts"), core.getInput("ssh-known-hosts"))
-      core.info(await execShellCommand('cat ~/.ssh/known_hosts'))
+      core.info(`Appending ssh-known-hosts to ${sshKnownHostsFile}. Contents of ${sshKnownHostsFile}`)
+      fs.appendFileSync(sshKnownHostsFile, core.getInput("ssh-known-hosts"))
     } else {
-      core.info("Auto-generating ~/.ssh/known_hosts by attempting connection to uptermd.upterm.dev")
+      core.debug(`Auto-generating ${sshKnownHostsFile} by attempting connection to ${uptermServer}`)
+      if (fs.existsSync(sshKnownHostsFile)) {
+        try {
+          fs.renameSync(sshKnownHostsFile, `${sshKnownHostsFile}.bkp`);
+        } catch (error) {
+          core.warning(`error renaming ${sshKnownHostsFile}`);
+        }
+      }
       try {
-        await execShellCommand("ssh -i ~/.ssh/id_ed25519 uptermd.upterm.dev")
-      } catch { }
+        core.debug(await execShellCommand(`ssh -v -T -F ${sshConfigPath} ${uptermServer}`));
+      } catch (error) {
+        core.warning(`error connecting to ${uptermServer}: ${error}`);
+      }
+
       // @cert-authority entry is the mandatory entry. generate the entry based on the known_hosts entry key
       try {
-        await execShellCommand('cat <(cat ~/.ssh/known_hosts | awk \'{ print "@cert-authority * " $2 " " $3 }\') >> ~/.ssh/known_hosts')
-      } catch { }
+        const data = fs.readFileSync(sshKnownHostsFile, 'UTF-8')
+        const lines = data.split(/\r?\n/)
+        var appendix = [];
+        lines.forEach(line => {
+          var result = undefined;
+          if (!line.includes("@")) {
+            const split_line = line.split(/,| /);
+            const one = split_line[1];
+            const two = split_line[2];
+            if (one != undefined && two != undefined) {
+              result = util.format('@cert-authority * %s %s', one, two);
+              appendix.push(result);
+            }
+          }
+          core.debug(`processed line: ${line} => ${result}`);
+        })
+        fs.appendFileSync(sshKnownHostsFile, appendix.join('\n\n'))
+      } catch (error) { core.error(`error processing ${sshKnownHostsFile}: ${error}`); }
     }
 
     let authorizedKeysParameter = ""
@@ -85,7 +213,7 @@ export async function run() {
               allowedKeys.push(item.key)
             }
           } catch (error) {
-            core.info(`Error fetching keys for ${allowedUser}. Error: ${error.message}`)
+            core.error(`Error fetching keys for ${allowedUser}. Error: ${error.message}`)
           }
         }
       }
@@ -98,24 +226,27 @@ export async function run() {
       authorizedKeysParameter = `-a "${authorizedKeysPath}"`
     }
 
-    const uptermServer = core.getInput("upterm-server")
-    core.info(`Creating a new session. Connecting to upterm server ${uptermServer}`)
-    await execShellCommand(`tmux new -d -s upterm-wrapper -x 132 -y 43 \"upterm host --server '${uptermServer}' ${authorizedKeysParameter} --force-command 'tmux attach -t upterm' -- tmux new -s upterm -x 132 -y 43\"`)
+
+    core.debug(`Creating a new session. Connecting to upterm server ${uptermServer}`)
+    await execShellCommand(`tmux new -d -s upterm-wrapper`);
+    await execShellCommand(`tmux new -d -s upterm`);
+    {
+      const innerCmd = "tmux attach -t upterm";
+      await execShellCommand(`tmux send-keys -t upterm-wrapper.0 "upterm host --server '${uptermServer}' ${authorizedKeysParameter} --force-command '${innerCmd}' -- ${innerCmd}" ENTER`);
+    }
     await sleep(2000)
-    await execShellCommand("tmux send-keys -t upterm-wrapper q C-m")
+    await execShellCommand("tmux send-keys -t upterm-wrapper.0 q C-m");
     // resize terminal for largest client by default
     await execShellCommand("tmux set -t upterm-wrapper window-size largest; tmux set -t upterm window-size largest")
-    console.debug("Created new session successfully")
+    core.debug("Created new session successfully")
 
     core.debug("Fetching connection strings")
-    await sleep(1000)
-
-    console.debug("Entering main loop")
+    core.debug("Entering main loop")
     while (true) {
       try {
-        core.info(await execShellCommand('bash -c "upterm session current --admin-socket ~/.upterm/*.sock"'));
+        core.info(await execShellCommand(`upterm session current --admin-socket ${uptermSockGlob}`));
       } catch (error) {
-        core.info(error.message);
+        core.error(error.message);
         break
       }
 
