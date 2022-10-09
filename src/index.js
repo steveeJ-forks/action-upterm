@@ -43,11 +43,24 @@ export async function run() {
     core.debug("Installed dependencies successfully")
 
     const sshPath = path.join(os.homedir(), ".ssh")
+    if (!fs.existsSync(sshPath)) {
+      fs.mkdirSync(sshPath, { recursive: true });
+    };
+
     if (!fs.existsSync(path.join(sshPath, "id_rsa"))) {
-      core.debug("Generating SSH keys")
-      fs.mkdirSync(sshPath, { recursive: true })
+      core.debug("Generating RSA SSH key")
       try {
-        await execShellCommand(`ssh-keygen -q -t rsa -N "" -f ~/.ssh/id_rsa; ssh-keygen -q -t ed25519 -N "" -f ~/.ssh/id_ed25519`);
+        await execShellCommand(`ssh-keygen -q -t rsa -N "" -f ~/.ssh/id_rsa`);
+      } catch { }    
+      core.debug("Generated SSH keys successfully")
+    } else {
+      core.debug("SSH key already exists")
+    }
+
+    if (!fs.existsSync(path.join(sshPath, "id_ed25519"))) {
+      core.debug("Generating ED25519 SSH key")
+      try {
+        await execShellCommand(`ssh-keygen -q -t ed25519 -N "" -f ~/.ssh/id_ed25519`);
       } catch { }    
       core.debug("Generated SSH keys successfully")
     } else {
