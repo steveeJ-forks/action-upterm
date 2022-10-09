@@ -2,7 +2,7 @@ import { spawn } from 'child_process'
 
 export const execShellCommand = (cmd) => {
   return new Promise((resolve, reject) => {
-    const process = spawn(cmd, [], { shell: '/bin/bash' })
+    const process = spawn(cmd, [], { shell: false })
     let stdout = ""
     process.stdout.on('data', (data) => {
       console.log(data.toString());
