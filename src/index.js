@@ -52,13 +52,13 @@ export async function run() {
         {id_file:"id_ed25519", algo:"ed25519"}
         ]) {
         if (!fs.existsSync(path.join(sshPath, t.id_file))) {
-          core.debug("Generating {} SSH key", t.algo);
+          core.debug("Generating ${t.algo} SSH key at ${t.id_file}", t.algo);
           try {
-            await execShellCommand(`ssh-keygen -q -t rsa -N "" -f ~/.ssh/id_rsa`);
+            await execShellCommand(`ssh-keygen -q -t ${t.algo }-N "" -f ~/.ssh/${t.id_file}`);
           } catch { }    
-          core.debug("Generated SSH key for {} successfully", t.algo)
+          core.debug("Generated SSH key for ${t.algo} successfully")
         } else {
-          core.debug("SSH key for {} already exists", t.algo)
+          core.debug("SSH key for ${t.algo} already exists")
         }
     }
 
