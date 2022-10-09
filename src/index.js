@@ -22,15 +22,18 @@ export async function run() {
     core.debug("Installing dependencies")
     if (process.platform == "linux") {
       try {
+        await execShellCommand(`echo $PATH`)
         await execShellCommand(`upterm version`)
         core.debug("upterm is already installed.")
       } catch {
+        core.debug("Installing upterm")
         await execShellCommand(`curl -sL https://github.com/owenthereal/upterm/releases/download/${UPTERM_VERSION}/upterm_linux_amd64.tar.gz | tar zxvf - -C /tmp upterm && sudo install /tmp/upterm /usr/local/bin/`)
       }
       try {
         await execShellCommand(`tmux -V`)
         core.debug("tmux is already installed.")
       } catch {
+        core.debug("Installing upterm")
         await execShellCommand("sudo apt-get -y install tmux")
       }
     } else {
