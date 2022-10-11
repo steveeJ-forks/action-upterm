@@ -46,8 +46,8 @@ export async function run() {
     await execShellCommand(`env`)
     await execShellCommand(`id`)
 
-    const HOME = process.env.HOME;
-    process.chdir(HOME);
+    const home = process.env.HOME;
+    process.chdir(home);
     core.info(util.format("Working directory: %s", process.cwd()));
 
     process.env.TMUX_TMPDIR = `~/.tmux_tmpdir`;
@@ -79,8 +79,8 @@ export async function run() {
     fs.appendFileSync(
       ssh_config_path,
       `Host ${uptermServerHost}
-         GlobalKnownHostsFile ~/.ssh/known_hosts
-         UserKnownHostsFile ~/.ssh/known_hosts
+         GlobalKnownHostsFile ${home}/.ssh/known_hosts
+         UserKnownHostsFile ${home}/.ssh/known_hosts
          StrictHostKeyChecking no
          CheckHostIP no
          TCPKeepAlive yes
