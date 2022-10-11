@@ -85,8 +85,9 @@ export async function run() {
          TCPKeepAlive yes
          ServerAliveInterval 30
          ServerAliveCountMax 180
-         VerifyHostKeyDNS no
          UpdateHostKeys yes
+         VerifyHostKeyDNS yes
+         PasswordAuthentication no
       `
     );
     await execShellCommand(`cat ${ssh_config_path}`);
