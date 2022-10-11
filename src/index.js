@@ -72,8 +72,7 @@ export async function run() {
     }
 
     const uptermServer = core.getInput("upterm-server");
-    const uptermServerHost = core.getInput("upterm-server")
-          .replace(new RegExp('(^[a-z]+://|:[0-9]+$)', ''));
+    const uptermServerHost = core.getInput("upterm-server").replace(/^[a-z]+:\/\/|:[0-9]+|/g, '');
 
     core.debug(`configuring ssh client for host ${uptermServerHost}`);
     const ssh_config_path = path.join(sshPath, "config");
