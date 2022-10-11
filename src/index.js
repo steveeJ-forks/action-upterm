@@ -92,9 +92,9 @@ export async function run() {
       fs.appendFileSync(path.join(sshPath, "known_hosts"), core.getInput("ssh-known-hosts"))
       core.info(await execShellCommand('cat ~/.ssh/known_hosts'))
     } else {
-      core.info("Auto-generating ~/.ssh/known_hosts by attempting connection to uptermd.upterm.dev")
+      core.info(`Auto-generating ~/.ssh/known_hosts by attempting connection to ${uptermServer}`)
       try {
-        await execShellCommand("ssh -v -tt -F ~/.ssh/config uptermd.upterm.dev")
+        await execShellCommand(`ssh -v -tt -F ~/.ssh/config ${uptermServer}`)
       } catch { }
       // @cert-authority entry is the mandatory entry. generate the entry based on the known_hosts entry key
       try {
