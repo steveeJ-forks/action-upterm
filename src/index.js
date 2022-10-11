@@ -47,6 +47,7 @@ export async function run() {
     await execShellCommand(`id`)
 
     const home = process.env.HOME;
+    process.env.SHELL = "/bin/sh";
     process.chdir(home);
     core.info(util.format("Working directory: %s", process.cwd()));
 
