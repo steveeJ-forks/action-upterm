@@ -71,13 +71,15 @@ export async function run() {
         }
     }
 
-    const uptermServer = core.getInput("upterm-server")
+    const uptermServer = core.getInput("upterm-server");
+    const uptermServerHost = core.getInput("upterm-server")
+          .replace(new RegExp('(^[a-z]+://|:[0-9]+$)', ''));
 
-    core.debug("Configuring ssh client")
+    core.debug(`configuring ssh client for host ${uptermServerHost}`);
     const ssh_config_path = path.join(sshPath, "config");
     fs.appendFileSync(
       ssh_config_path,
-      `Host ${uptermServer}
+      `Host ${uptermServerHost}
          GlobalKnownHostsFile ~/.ssh/known_hosts
          UserKnownHostsFile ~/.ssh/known_hosts
          StrictHostKeyChecking no
