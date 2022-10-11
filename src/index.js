@@ -5,7 +5,7 @@ import * as core from "@actions/core"
 import * as github from "@actions/github"
 import { Octokit } from "@octokit/rest"
 const { createActionAuth } = require("@octokit/auth-action");
-const util = require('node:util');
+const util = require('util');
 
 import { execShellCommand } from "./helpers"
 
