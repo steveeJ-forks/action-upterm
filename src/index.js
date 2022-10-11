@@ -70,7 +70,7 @@ export async function run() {
     core.debug("Configuring ssh client")
     fs.appendFileSync(
         path.join(sshPath, "config"),
-        "Host *\nUserKnownHostsFile ~/.ssh/known_hosts\nStrictHostKeyChecking no\nCheckHostIP no\n" +
+        "Host *\nGlobalKnownHostsFile ~/.ssh/known_hosts\nUserKnownHostsFile ~/.ssh/known_hosts\nStrictHostKeyChecking no\nCheckHostIP no\n" +
           "TCPKeepAlive yes\nServerAliveInterval 30\nServerAliveCountMax 180\nVerifyHostKeyDNS yes\nUpdateHostKeys yes\n"
       )
     // entry in known hosts file in mandatory in upterm. attempt ssh connection to upterm server
