@@ -48,7 +48,7 @@ export async function run() {
 
     const HOME = process.env.HOME;
     process.chdir(HOME);
-    core.info(util.format("Working directory: %s", process.cwd());
+    core.info(util.format("Working directory: %s", process.cwd()));
 
     process.env.TMUX_TMPDIR = `~/.tmux_tmpdir`;
     const sshPath = path.join(os.homedir(), ".ssh")
