@@ -67,6 +67,8 @@ export async function run() {
         }
     }
 
+    const uptermServer = core.getInput("upterm-server")
+
     core.debug("Configuring ssh client")
     const ssh_config_path = path.join(sshPath, "config");
     fs.appendFileSync(
@@ -139,7 +141,6 @@ export async function run() {
       authorizedKeysParameter = `-a "${authorizedKeysPath}"`
     }
 
-    const uptermServer = core.getInput("upterm-server")
     core.info(`Creating a new session. Connecting to upterm server ${uptermServer}`)
     await execShellCommand(`tmux new -d -s upterm-wrapper`)
     await execShellCommand(`tmux new -d -s upterm`)
