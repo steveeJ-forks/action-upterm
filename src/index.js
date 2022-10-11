@@ -9,7 +9,7 @@ const util = require('node:util');
 
 import { execShellCommand } from "./helpers"
 
-const UPTERM_VERSION = "v0.7.6"
+const UPTERM_VERSION = "v0.9.0"
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
