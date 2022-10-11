@@ -6,6 +6,7 @@ import * as github from "@actions/github"
 import { Octokit } from "@octokit/rest"
 const { createActionAuth } = require("@octokit/auth-action");
 const util = require('util');
+const util = require('process');
 
 import { execShellCommand } from "./helpers"
 
@@ -45,8 +46,10 @@ export async function run() {
     await execShellCommand(`env`)
     await execShellCommand(`id`)
 
-    process.env.TMUX_TMPDIR = `~/.tmux_tmpdir`;
+    const HOME = process.env.HOME;
+    process.chdir(HOME);
 
+    process.env.TMUX_TMPDIR = `~/.tmux_tmpdir`;
     const sshPath = path.join(os.homedir(), ".ssh")
     if (!fs.existsSync(sshPath)) {
       fs.mkdirSync(sshPath, { recursive: true });
