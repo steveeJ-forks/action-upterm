@@ -54,7 +54,7 @@ export async function run() {
         if (!fs.existsSync(path.join(sshPath, t.id_file))) {
           core.info(`Generating ${t.algo} SSH key at ${t.id_file}`);
           try {
-            await execShellCommand(uti.format(`ssh-keygen -q -t %s -N "" -f ~/.ssh/${t.id_file}`, t.algo);
+            await execShellCommand(uti.format(`ssh-keygen -q -t %s -N "" -f ~/.ssh/${t.id_file}`, t.algo));
           } catch { }
           core.info(util.format(`Generated SSH key for %ssuccessfully`, ${t.algo}));
         } else {
