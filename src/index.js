@@ -23,7 +23,6 @@ export async function run() {
     core.debug("Installing dependencies")
     if (process.platform == "linux") {
       try {
-        await execShellCommand(`env`)
         await execShellCommand(`upterm version`)
         core.debug("upterm is already installed.")
       } catch {
@@ -42,6 +41,11 @@ export async function run() {
       await execShellCommand("brew install tmux")
     }
     core.debug("Installed dependencies successfully")
+
+    await execShellCommand(`env`)
+    await execShellCommand(`id`)
+
+    process.env.TMUX_TMPDIR = `~/.tmux_tmpdir`;
 
     const sshPath = path.join(os.homedir(), ".ssh")
     if (!fs.existsSync(sshPath)) {
