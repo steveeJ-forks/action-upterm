@@ -23,7 +23,7 @@ export async function run() {
     core.debug("Installing dependencies")
     if (process.platform == "linux") {
       try {
-        await execShellCommand(`echo $PATH`)
+        await execShellCommand(`env`)
         await execShellCommand(`upterm version`)
         core.debug("upterm is already installed.")
       } catch {
